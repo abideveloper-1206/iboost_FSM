@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Activity, ArrowLeft, ArrowRight, Bell, Blocks, Camera, Check, CheckCircle2, ChevronRight, CircleHelp, ClipboardCheck, Clock3, FileText, MapPin, MessageSquare, MoreHorizontal, Navigation, Phone, ShieldCheck, Sparkles, UserRound, Wifi, WifiOff, Wrench, X } from 'lucide-react';
+import { Activity, ArrowLeft, ArrowRight, Bell, Blocks, Camera, Check, CheckCircle2, ChevronRight, CircleHelp, ClipboardCheck, Clock3, FileText, MapPin, MessageSquare, MoreHorizontal, Navigation, Phone, ShieldCheck, Sparkles, UserRound, Wifi, WifiOff, Wrench, X, Search, Timer, Plus } from 'lucide-react';
 
 const tabs = [['Today', ClipboardCheck], ['Jobs', Blocks], ['Time', Clock3], ['Messages', MessageSquare], ['More', MoreHorizontal]];
 
@@ -12,6 +12,8 @@ export default function TechnicianApp({ jobs = [] }) {
   const [checks, setChecks] = useState({ confirmed: true, diagnosed: false, complete: false });
   const [toast, setToast] = useState('');
   const [expandedAI, setExpandedAI] = useState(false);
+  const [jobQuery, setJobQuery] = useState('');
+  const [jobFilter, setJobFilter] = useState('All');
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, []);
@@ -19,7 +21,12 @@ export default function TechnicianApp({ jobs = [] }) {
     document.querySelector('.tech-mobile-scroll')?.scrollTo({ top: 0 });
   }, [screen, selected]);
   const notify = text => { setToast(text); window.setTimeout(() => setToast(''), 2500); };
-  const todaysJobs = jobs.slice(0, 4);
+  const todaysJobs = jobs.slice(0, 6);
+  const visibleJobs = todaysJobs.filter(job => {
+    const matchesQuery = `${job.id} ${job.type} ${job.customer} ${job.address}`.toLowerCase().includes(jobQuery.toLowerCase());
+    const matchesFilter = jobFilter === 'All' || (jobFilter === 'Active' ? ['In progress', 'En route'].includes(job.status) : job.status === jobFilter);
+    return matchesQuery && matchesFilter;
+  });
   const activeJob = selected || todaysJobs[0] || { id: 'JB-2048', type: 'AC tune-up', customer: 'Sarah Mitchell', time: '8:00 AM', duration: '2h', address: '1248 Oakridge Lane - North Austin', status: 'In progress', tech: 'Alex Morgan' };
   const completed = Object.values(checks).filter(Boolean).length;
   const go = name => setScreen(name);
@@ -33,10 +40,12 @@ export default function TechnicianApp({ jobs = [] }) {
 
       <div className="tech-mobile-scroll">
         {(screen === 'Today' || screen === 'Jobs') && <>
-          <div className={`tech-sync-banner ${offline?'offline':''}`}><span>{offline?<WifiOff size={16}/>:<Wifi size={16}/>}</span><div><strong>{offline?'Working offline':'You are online'}</strong><small>{offline?'Changes will sync when you reconnect.':'Schedule synced just now.'}</small></div><button onClick={() => setOffline(!offline)}>{offline?'Reconnect':'Go offline'}</button></div>
-          <div className="tech-day-title"><div><span>{screen === 'Today' ? 'MY ROUTE' : 'WORK ORDERS'}</span><h2>{screen === 'Today' ? "Today's jobs" : 'Assigned jobs'}</h2></div><span className="tech-job-count">{todaysJobs.length} visits</span></div>
-          {screen === 'Today' && <div className="tech-route-card"><div><Navigation size={17}/><span><strong>Route overview</strong><small>4 stops · about 2h 20m driving</small></span></div><button onClick={() => notify('Route map preview opened')}>View map <ArrowRight size={14}/></button></div>}
-          <div className="tech-job-list">{todaysJobs.map((job,index)=><button className="tech-job-card" key={job.id} onClick={() => {setSelected(job);setScreen('Job');}}><div className="tech-job-timeline"><span className={index===0?'current':''}/>{index<todaysJobs.length-1&&<i/>}</div><div className="tech-job-info"><div className="tech-job-time">{job.time}<span>{job.duration}</span></div><strong>{job.type}</strong><span>{job.customer}</span><small><MapPin size={12}/>{job.address}</small><em className={`tech-status ${job.status==='In progress'?'in-progress':''}`}>{job.status}</em></div><ChevronRight size={17}/></button>)}</div>
+          <div className={`tech-sync-banner ${offline?'offline':''}`}><span>{offline?<WifiOff size={16}/>:<Wifi size={16}/>}</span><div><strong>{offline?'Offline mode':'You are connected'}</strong><small>{offline?'Saved changes will sync when connection returns.':'Schedule is up to date - last sync just now'}</small></div><button onClick={() => setOffline(!offline)}>{offline?'Reconnect':'Offline mode'}</button></div>
+          {screen === 'Today' && <div className="tech-shift-card"><div className="tech-shift-top"><div><span>YOUR SHIFT</span><strong>Tuesday, November 18</strong></div><span className="tech-shift-status"><i/> On shift</span></div><div className="tech-shift-progress"><span style={{width:`${Math.min(100,Math.round(todaysJobs.filter(j=>j.status==='Completed').length/Math.max(todaysJobs.length,1)*100))}%`}}/></div><div className="tech-shift-stats"><span><strong>{todaysJobs.length}</strong> visits</span><span><strong>{todaysJobs.filter(j=>j.status==='Completed').length}</strong> complete</span><button onClick={() => {setStarted(!started);notify(started?'Shift timer paused':'Shift timer started');}}><Timer size={13}/>{started?'Pause shift':'Clock in'}</button></div></div>}
+          <div className="tech-day-title"><div><span>{screen === 'Today' ? 'MY ROUTE' : 'WORK ORDERS'}</span><h2>{screen === 'Today' ? "Today's jobs" : 'Assigned jobs'}</h2></div><span className="tech-job-count">{visibleJobs.length} visits</span></div>
+          {screen === 'Today' && <div className="tech-route-card"><div><Navigation size={17}/><span><strong>Route overview</strong><small>{todaysJobs.length} stops ? travel plan preview</small></span></div><button onClick={() => notify('Route map preview ? route optimization is planned after launch')}>View map <ArrowRight size={14}/></button></div>}
+          {screen === 'Jobs' && <div className="tech-job-tools"><label><Search size={15}/><input value={jobQuery} onChange={event=>setJobQuery(event.target.value)} placeholder="Search jobs, customer, address"/></label><div>{['All','Active','Scheduled','Completed'].map(filter=><button key={filter} className={jobFilter===filter?'selected':''} onClick={()=>setJobFilter(filter)}>{filter}</button>)}</div></div>}
+          <div className="tech-job-list">{visibleJobs.map((job,index)=><button className={`tech-job-card ${job.status==='In progress'?'is-active':''}`} key={job.id} onClick={() => {setSelected(job);setScreen('Job');}}><div className="tech-job-timeline"><span className={job.status==='In progress'||index===0?'current':''}/>{index<visibleJobs.length-1&&<i/>}</div><div className="tech-job-info"><div className="tech-job-time"><span>{job.time}</span><span>{job.duration}</span></div><div className="tech-job-card-title"><strong>{job.type}</strong><em className={`tech-status ${job.status==='In progress'?'in-progress':''}`}>{job.status}</em></div><span>{job.customer}</span><small><MapPin size={12}/>{job.address}</small><div className="tech-job-meta"><span>JOB {job.id}</span><span>{job.priority||'Standard priority'}</span></div></div><ChevronRight size={17}/></button>)}{!visibleJobs.length&&<div className="tech-empty-state"><Search size={20}/><strong>No matching jobs</strong><span>Try another search or status filter.</span></div>}</div>
           {screen === 'Today' && <><button className="tech-ai-card" onClick={() => go('AI assist')}><span><Sparkles size={17}/></span><div><strong>AI pre-job brief</strong><small>Customer history, equipment, and suggested checks</small></div><ArrowRight size={15}/></button><button className="tech-mobile-bottom" onClick={() => notify('End-of-day summary opened')}><ClipboardCheck size={17}/> End-of-day summary <ArrowRight size={15}/></button></>}
         </>}
 
